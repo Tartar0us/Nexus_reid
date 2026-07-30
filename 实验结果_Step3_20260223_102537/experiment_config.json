@@ -1,0 +1,123 @@
+{
+  "experiment_name": "Step3 - 增强数据增强 + 优化训练策略",
+  "experiment_date": "2026-02-23 10:25:38",
+  "dataset": {
+    "name": "MARS",
+    "train_path": "G:\\行人重识别\\时序建模\\Video-Person-ReID-master\\data\\mars\\bbox_train",
+    "test_path": "G:\\行人重识别\\时序建模\\Video-Person-ReID-master\\data\\mars\\bbox_test",
+    "train_pids": 625,
+    "train_tracklets": 8298,
+    "test_pids": 635,
+    "test_tracklets": 11310
+  },
+  "model": {
+    "architecture": "VideoReIDAttentionImproved",
+    "backbone": "ResNet50",
+    "frozen_layers": [
+      "layer1",
+      "layer2",
+      "layer3"
+    ],
+    "trainable_layers": [
+      "layer4",
+      "attention",
+      "embedding",
+      "classifier"
+    ],
+    "embedding_dim": 512,
+    "num_classes": 625
+  },
+  "training": {
+    "epochs": 60,
+    "batch_size": 16,
+    "seq_len": 8,
+    "optimizer": "AdamW",
+    "base_lr": 0.0003,
+    "layer4_lr": 3e-05,
+    "weight_decay": 0.0005,
+    "scheduler": "Warmup + Cosine Annealing",
+    "warmup_epochs": 5,
+    "min_lr": 1e-06,
+    "triplet_loss_weight": 0.5,
+    "triplet_loss_margin": 0.3,
+    "label_smoothing": 0.1,
+    "gradient_clipping": 5.0
+  },
+  "data_augmentation": {
+    "resize": [
+      256,
+      128
+    ],
+    "random_horizontal_flip": 0.5,
+    "padding": 10,
+    "random_crop": [
+      256,
+      128
+    ],
+    "color_jitter": {
+      "brightness": 0.25,
+      "contrast": 0.25,
+      "saturation": 0.25,
+      "hue": 0.1
+    },
+    "random_grayscale": 0.1,
+    "random_erasing": {
+      "probability": 0.5,
+      "scale": [
+        0.02,
+        0.2
+      ],
+      "ratio": [
+        0.3,
+        3.3
+      ]
+    }
+  },
+  "results": {
+    "baseline": {
+      "rank1": 19.73,
+      "rank5": 31.49,
+      "mAP": 12.9
+    },
+    "step1": {
+      "rank1": 78.01,
+      "rank5": 90.19,
+      "rank10": 92.41,
+      "rank20": 94.62,
+      "mAP": 57.65
+    },
+    "step3": {
+      "rank1": 85.6,
+      "rank5": 93.99,
+      "rank10": 96.2,
+      "rank20": 97.47,
+      "mAP": 70.34
+    },
+    "improvement_from_baseline": {
+      "rank1": "+65.87% (4.34x)",
+      "rank5": "+62.50% (2.98x)",
+      "mAP": "+57.44% (5.45x)"
+    },
+    "improvement_from_step1": {
+      "rank1": "+7.59%",
+      "rank5": "+3.80%",
+      "mAP": "+12.69%"
+    }
+  },
+  "evaluation": {
+    "protocol": "Query/Gallery Split",
+    "query_samples": 635,
+    "gallery_samples": 2922,
+    "metric": "Euclidean Distance"
+  },
+  "model_files": {
+    "final_model": "models/final_model_step3.pth",
+    "best_model": "models/best_model_step3.pth",
+    "description": "final_model是训练60轮后的最终模型，best_model是验证集上表现最好的模型"
+  },
+  "hardware": {
+    "gpu": "RTX 4060 Laptop",
+    "os": "Windows",
+    "training_time": "约4-5小时"
+  }
+}
