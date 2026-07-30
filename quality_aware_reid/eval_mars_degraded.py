@@ -98,6 +98,11 @@ def parse_args():
                         help="Degradation strength in [0, 1].")
     parser.add_argument("--num-classes", type=int, default=625)
     parser.add_argument("--seq-len", type=int, default=8)
+    parser.add_argument("--fusion-mode", choices=["additive_log", "multiplicative"],
+                        default="additive_log",
+                        help="Quality-aware fusion mode; only used for model-type quality_aware.")
+    parser.add_argument("--disable-quality-bias", action="store_true",
+                        help="Disable quality bias for quality_aware ablation.")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
@@ -132,7 +137,13 @@ def main():
         pin_memory=device.type == "cuda",
     )
 
-    model = build_model(args.model_type, args.num_classes, args.seq_len).to(device)
+    model = build_model(
+        args.model_type,
+        args.num_classes,
+        args.seq_len,
+        args.fusion_mode,
+        not args.disable_quality_bias,
+    ).to(device)
     load_checkpoint(model, args.checkpoint, device)
 
     q_feat, q_pids, q_camids = extract_features(model, query_loader, device)
@@ -162,6 +173,8 @@ def main():
         "severity": severity,
         "seed": args.seed,
         "seq_len": args.seq_len,
+        "fusion_mode": args.fusion_mode if args.model_type == "quality_aware" else "",
+        "use_quality_bias": (not args.disable_quality_bias) if args.model_type == "quality_aware" else "",
         "num_classes": args.num_classes,
         "query_tracklets": len(query_tracklets),
         "gallery_tracklets": len(gallery_tracklets),

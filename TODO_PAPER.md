@@ -12,6 +12,7 @@
 - 已有质量分数和 attention 权重 JSON 导出工具，可支撑可解释性图表。
 - 已有 metrics JSON 聚合工具和批量消融评估 PowerShell 脚本。
 - 已有合成退化质量排序监督入口，可用 `--quality-rank-weight` 打开。
+- 已有质量融合方式消融入口：additive log-bias、multiplicative、disable quality bias。
 
 ## 目前不能直接投稿的原因
 
@@ -43,6 +44,7 @@
 - QA attention + quality regularization。
 - QA attention + degradation supervision。
 - Additive log-bias vs multiplicative fusion。
+- Quality-aware attention with vs without quality bias。
 - `seq_len=4/8/16`。
 
 ## P3：写作主线

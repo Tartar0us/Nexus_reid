@@ -16,7 +16,8 @@ param(
     [int]$NumClasses = 625,
     [int]$BatchSize = 32,
     [string]$Device = "cuda",
-    [double]$Severity = 0.5
+    [double]$Severity = 0.5,
+    [switch]$IncludeQualityFusionAblations
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,6 +59,30 @@ foreach ($model in $models) {
         --batch-size $BatchSize `
         --device $Device `
         --output-json (Join-Path $OutputDir "mixed_${Severity}_$name.json")
+}
+
+if ($IncludeQualityFusionAblations) {
+    python quality_aware_reid\eval_mars_official.py `
+        --data-root $DataRoot `
+        --checkpoint $QualityCheckpoint `
+        --model-type quality_aware `
+        --disable-quality-bias `
+        --num-classes $NumClasses `
+        --seq-len $SeqLen `
+        --batch-size $BatchSize `
+        --device $Device `
+        --output-json (Join-Path $OutputDir "clean_quality_aware_no_bias.json")
+
+    python quality_aware_reid\eval_mars_official.py `
+        --data-root $DataRoot `
+        --checkpoint $QualityCheckpoint `
+        --model-type quality_aware `
+        --fusion-mode multiplicative `
+        --num-classes $NumClasses `
+        --seq-len $SeqLen `
+        --batch-size $BatchSize `
+        --device $Device `
+        --output-json (Join-Path $OutputDir "clean_quality_aware_multiplicative.json")
 }
 
 python quality_aware_reid\summarize_metrics.py `

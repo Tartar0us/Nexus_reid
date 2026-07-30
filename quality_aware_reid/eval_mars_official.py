@@ -149,9 +149,15 @@ def load_checkpoint(model: torch.nn.Module, checkpoint_path: Path, device: torch
     model.load_state_dict(state_dict)
 
 
-def build_model(model_type: str, num_classes: int, seq_len: int):
+def build_model(model_type: str, num_classes: int, seq_len: int,
+                fusion_mode: str = "additive_log", use_quality_bias: bool = True):
     if model_type == "quality_aware":
-        return QualityAwareVideoReID(num_classes=num_classes, seq_len=seq_len)
+        return QualityAwareVideoReID(
+            num_classes=num_classes,
+            seq_len=seq_len,
+            fusion_mode=fusion_mode,
+            use_quality_bias=use_quality_bias,
+        )
     if model_type == "semantic_attention":
         return SemanticAttentionVideoReID(num_classes=num_classes)
     if model_type == "mean_pooling":
@@ -241,6 +247,11 @@ def parse_args():
                         help="Model architecture to instantiate for the checkpoint.")
     parser.add_argument("--num-classes", type=int, default=625)
     parser.add_argument("--seq-len", type=int, default=8)
+    parser.add_argument("--fusion-mode", choices=["additive_log", "multiplicative"],
+                        default="additive_log",
+                        help="Quality-aware fusion mode; only used for model-type quality_aware.")
+    parser.add_argument("--disable-quality-bias", action="store_true",
+                        help="Disable quality bias for quality_aware ablation.")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -275,7 +286,13 @@ def main():
         pin_memory=device.type == "cuda",
     )
 
-    model = build_model(args.model_type, args.num_classes, args.seq_len).to(device)
+    model = build_model(
+        args.model_type,
+        args.num_classes,
+        args.seq_len,
+        args.fusion_mode,
+        not args.disable_quality_bias,
+    ).to(device)
     load_checkpoint(model, args.checkpoint, device)
 
     print("Extracting query features...")
@@ -303,6 +320,8 @@ def main():
         "checkpoint": str(args.checkpoint),
         "data_root": str(args.data_root),
         "seq_len": args.seq_len,
+        "fusion_mode": args.fusion_mode if args.model_type == "quality_aware" else "",
+        "use_quality_bias": (not args.disable_quality_bias) if args.model_type == "quality_aware" else "",
         "num_classes": args.num_classes,
         "query_tracklets": len(query_tracklets),
         "gallery_tracklets": len(gallery_tracklets),

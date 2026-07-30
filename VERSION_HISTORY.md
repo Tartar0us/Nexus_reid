@@ -39,6 +39,40 @@ Core idea:
 
 ## Version Log
 
+### 2026-07-30 - `feat: add quality fusion ablations`
+
+Purpose:
+
+- Add method-level ablation switches for the quality-aware temporal attention design.
+
+Changes:
+
+- Added configurable quality fusion inside `QualityAwareTemporalAttention`:
+  - `additive_log`
+  - `multiplicative`
+- Added a `use_quality_bias` switch for no-quality-bias ablation while still computing/exporting FQE scores.
+- Exposed these switches in:
+  - `quality_aware_reid/train.py`
+  - `quality_aware_reid/eval_mars_official.py`
+  - `quality_aware_reid/eval_mars_degraded.py`
+  - `quality_aware_reid/visualize_quality.py`
+- Extended `run_ablation_eval.ps1` with `-IncludeQualityFusionAblations`.
+- Updated README and TODO notes.
+
+Validation:
+
+- All Python files under `quality_aware_reid/` compiled successfully.
+- `python quality_aware_reid/train.py --help` showed fusion ablation arguments.
+- `python quality_aware_reid/eval_mars_official.py --help` showed fusion ablation arguments.
+- `python quality_aware_reid/eval_mars_degraded.py --help` showed fusion ablation arguments.
+- `python quality_aware_reid/visualize_quality.py --help` showed fusion ablation arguments.
+- `run_ablation_eval.ps1` parsed successfully with PowerShell.
+
+Status:
+
+- Local commit created.
+- Pushed to GitHub `origin/main`.
+
 ### 2026-07-30 - `7955c2c` - `feat: add degradation ranking supervision`
 
 Purpose:

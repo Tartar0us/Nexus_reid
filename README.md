@@ -58,6 +58,24 @@ python quality_aware_reid/train.py ^
 训练集现在使用随机时序采样，同一 tracklet 在不同 epoch 会看到不同帧组合；
 评估侧保持均匀采样，保证结果可复现。
 
+质量融合消融：
+
+```bash
+python quality_aware_reid/train.py ^
+  --data-root "G:\行人重识别\时序建模\Video-Person-ReID-master\data\mars\bbox_train" ^
+  --save-dir quality_aware_reid\models\mars_quality_multiplicative ^
+  --fusion-mode multiplicative
+```
+
+关闭质量 bias、只保留语义 attention 与 FQE 导出：
+
+```bash
+python quality_aware_reid/train.py ^
+  --data-root "G:\行人重识别\时序建模\Video-Person-ReID-master\data\mars\bbox_train" ^
+  --save-dir quality_aware_reid\models\mars_quality_no_bias ^
+  --disable-quality-bias
+```
+
 开启合成退化质量排序监督：
 
 ```bash
@@ -153,7 +171,8 @@ powershell -ExecutionPolicy Bypass -File quality_aware_reid\run_ablation_eval.ps
   -MeanCheckpoint quality_aware_reid\models\mars_mean_pooling\best_model.pth `
   -SemanticCheckpoint quality_aware_reid\models\mars_semantic_attention\best_model.pth `
   -QualityCheckpoint quality_aware_reid\models\mars_quality_aware\best_model.pth `
-  -OutputDir quality_aware_reid\models\ablation_metrics
+  -OutputDir quality_aware_reid\models\ablation_metrics `
+  -IncludeQualityFusionAblations
 ```
 
 详细路线见根目录 `PROJECT_SEPARATION_AND_REID_ROADMAP.md`。

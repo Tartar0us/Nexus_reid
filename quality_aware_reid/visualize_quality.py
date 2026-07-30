@@ -71,6 +71,9 @@ def parse_args():
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument("--num-classes", type=int, default=625)
     parser.add_argument("--seq-len", type=int, default=8)
+    parser.add_argument("--fusion-mode", choices=["additive_log", "multiplicative"],
+                        default="additive_log")
+    parser.add_argument("--disable-quality-bias", action="store_true")
     parser.add_argument("--limit", type=int, default=16)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
@@ -81,7 +84,11 @@ def main():
     device = torch.device(args.device)
 
     model = QualityAwareVideoReID(
-        num_classes=args.num_classes, seq_len=args.seq_len).to(device)
+        num_classes=args.num_classes,
+        seq_len=args.seq_len,
+        fusion_mode=args.fusion_mode,
+        use_quality_bias=not args.disable_quality_bias,
+    ).to(device)
     load_checkpoint(model, args.checkpoint, device)
     model.eval()
 
@@ -109,6 +116,8 @@ def main():
             "checkpoint": str(args.checkpoint),
             "bbox_root": str(args.bbox_root),
             "seq_len": args.seq_len,
+            "fusion_mode": args.fusion_mode,
+            "use_quality_bias": not args.disable_quality_bias,
             "records": records,
         }, f, indent=2, ensure_ascii=False)
 

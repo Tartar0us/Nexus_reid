@@ -48,6 +48,10 @@ def parse_args():
     parser.add_argument("--weight-decay", type=float, default=5e-4)
     parser.add_argument("--triplet-weight", type=float, default=0.5)
     parser.add_argument("--quality-weight", type=float, default=0.05)
+    parser.add_argument("--fusion-mode", choices=["additive_log", "multiplicative"],
+                        default="additive_log")
+    parser.add_argument("--disable-quality-bias", action="store_true",
+                        help="Use semantic attention while still training/exporting FQE scores.")
     parser.add_argument("--quality-rank-weight", type=float, default=0.0,
                         help="Weight for synthetic degradation quality ranking loss.")
     parser.add_argument("--degradation-mode",
@@ -111,7 +115,12 @@ def train(args=None):
                               pin_memory=device.type == "cuda", drop_last=True)
 
     # ── 模型 ─────────────────────────────────────────────────
-    model = QualityAwareVideoReID(num_classes=args.num_classes, seq_len=args.seq_len).to(device)
+    model = QualityAwareVideoReID(
+        num_classes=args.num_classes,
+        seq_len=args.seq_len,
+        fusion_mode=args.fusion_mode,
+        use_quality_bias=not args.disable_quality_bias,
+    ).to(device)
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"总参数: {total/1e6:.1f}M | 可训练: {trainable/1e6:.1f}M")

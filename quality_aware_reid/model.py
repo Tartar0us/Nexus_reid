@@ -76,8 +76,12 @@ class QualityAwareTemporalAttention(nn.Module):
     加法融合而非乘法，避免质量分数为0时完全屏蔽某帧，
     同时保留语义注意力的主导地位。
     """
-    def __init__(self, feat_dim=2048):
+    def __init__(self, feat_dim=2048, fusion_mode="additive_log", use_quality_bias=True):
         super().__init__()
+        if fusion_mode not in {"additive_log", "multiplicative"}:
+            raise ValueError(f"Unknown fusion_mode: {fusion_mode}")
+        self.fusion_mode = fusion_mode
+        self.use_quality_bias = use_quality_bias
         self.semantic_attn = nn.Sequential(
             nn.Linear(feat_dim, 256),
             nn.ReLU(inplace=True),
@@ -92,9 +96,17 @@ class QualityAwareTemporalAttention(nn.Module):
         返回: 加权聚合后的视频特征 [B, 2048]，以及注意力权重 [B, T, 1]
         """
         semantic = self.semantic_attn(feat_vec)                    # [B, T, 1]
-        quality_bias = self.quality_scale * torch.log(quality_score + 1e-6)  # [B, T, 1]
-        combined = semantic + quality_bias                          # [B, T, 1]
-        attn_weights = F.softmax(combined, dim=1)                  # [B, T, 1]
+        semantic_attn = F.softmax(semantic, dim=1)                 # [B, T, 1]
+        if not self.use_quality_bias:
+            attn_weights = semantic_attn
+        elif self.fusion_mode == "additive_log":
+            quality_bias = self.quality_scale * torch.log(quality_score + 1e-6)
+            combined = semantic + quality_bias
+            attn_weights = F.softmax(combined, dim=1)
+        else:
+            quality_weight = quality_score.pow(torch.clamp(self.quality_scale, min=0.0))
+            attn_weights = semantic_attn * quality_weight
+            attn_weights = attn_weights / (attn_weights.sum(dim=1, keepdim=True) + 1e-6)
         video_feat = (feat_vec * attn_weights).sum(dim=1)          # [B, 2048]
         return video_feat, attn_weights
 
@@ -116,9 +128,12 @@ class QualityAwareVideoReID(nn.Module):
             ↓
         分类头 / 嵌入输出
     """
-    def __init__(self, num_classes, seq_len=8):
+    def __init__(self, num_classes, seq_len=8, fusion_mode="additive_log",
+                 use_quality_bias=True):
         super().__init__()
         self.seq_len = seq_len
+        self.fusion_mode = fusion_mode
+        self.use_quality_bias = use_quality_bias
 
         # Backbone
         backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
@@ -134,7 +149,11 @@ class QualityAwareVideoReID(nn.Module):
 
         # 核心创新模块
         self.fqe = FrameQualityEstimator(feat_dim=2048)
-        self.qa_attention = QualityAwareTemporalAttention(feat_dim=2048)
+        self.qa_attention = QualityAwareTemporalAttention(
+            feat_dim=2048,
+            fusion_mode=fusion_mode,
+            use_quality_bias=use_quality_bias,
+        )
 
         # 特征嵌入
         self.embedding = nn.Linear(2048, 512)
