@@ -58,6 +58,20 @@ python quality_aware_reid/train.py ^
 训练集现在使用随机时序采样，同一 tracklet 在不同 epoch 会看到不同帧组合；
 评估侧保持均匀采样，保证结果可复现。
 
+开启合成退化质量排序监督：
+
+```bash
+python quality_aware_reid/train.py ^
+  --data-root "G:\行人重识别\时序建模\Video-Person-ReID-master\data\mars\bbox_train" ^
+  --save-dir quality_aware_reid\models\mars_quality_aware_rank ^
+  --quality-rank-weight 0.1 ^
+  --degradation-mode mixed ^
+  --degradation-severity 0.5
+```
+
+该分支会生成退化视频，并约束 clean 视频的平均质量分数高于 degraded 视频；
+默认 `--quality-rank-weight 0.0`，因此旧训练行为保持不变。
+
 训练 mean pooling 或 semantic attention baseline：
 
 ```bash

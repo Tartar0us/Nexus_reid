@@ -74,3 +74,20 @@ class QualityRegularizationLoss(nn.Module):
         diversity_loss = F.relu(self.min_variance - var_per_video).mean()
 
         return self.diversity_weight * diversity_loss
+
+
+class QualityRankingLoss(nn.Module):
+    """
+    Encourage clean videos to receive higher quality scores than degraded ones.
+
+    Synthetic degradation provides a weak supervisory signal for the frame
+    quality estimator without requiring external frame-quality labels.
+    """
+    def __init__(self, margin=0.05):
+        super().__init__()
+        self.margin = margin
+
+    def forward(self, clean_quality, degraded_quality):
+        clean_mean = clean_quality.mean(dim=1)
+        degraded_mean = degraded_quality.mean(dim=1)
+        return F.relu(self.margin - (clean_mean - degraded_mean)).mean()

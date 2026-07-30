@@ -11,6 +11,7 @@
 - 已有退化鲁棒性 evaluator，可对 blur、brightness、occlusion、mixed 退化做同协议评估。
 - 已有质量分数和 attention 权重 JSON 导出工具，可支撑可解释性图表。
 - 已有 metrics JSON 聚合工具和批量消融评估 PowerShell 脚本。
+- 已有合成退化质量排序监督入口，可用 `--quality-rank-weight` 打开。
 
 ## 目前不能直接投稿的原因
 
@@ -30,7 +31,7 @@
 ## P1：论文方法增强
 
 - 增加 synthetic degradation：blur、occlusion、brightness、compression。
-- 为 FQE 增加伪质量监督或排序损失：原始帧质量高于退化帧。
+- 为 FQE 增加伪质量监督或排序损失：已实现原始视频质量高于退化视频的 ranking loss，下一步需要跑消融。
 - 用 `visualize_quality.py` 输出每帧 quality score 和 attention weight，并生成论文图。
 - 用 `eval_mars_degraded.py` 做低质量 stress test，验证鲁棒性而不只是整体 Rank-1。
 

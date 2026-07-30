@@ -22,7 +22,13 @@ from tqdm import tqdm
 
 sys.path.insert(0, os.path.dirname(__file__))
 from model import QualityAwareVideoReID
-from losses import LabelSmoothingCrossEntropy, TripletLoss, QualityRegularizationLoss
+from degradation import degrade_videos
+from losses import (
+    LabelSmoothingCrossEntropy,
+    QualityRankingLoss,
+    QualityRegularizationLoss,
+    TripletLoss,
+)
 from dataset import MARSDataset
 
 
@@ -42,6 +48,12 @@ def parse_args():
     parser.add_argument("--weight-decay", type=float, default=5e-4)
     parser.add_argument("--triplet-weight", type=float, default=0.5)
     parser.add_argument("--quality-weight", type=float, default=0.05)
+    parser.add_argument("--quality-rank-weight", type=float, default=0.0,
+                        help="Weight for synthetic degradation quality ranking loss.")
+    parser.add_argument("--degradation-mode",
+                        choices=["none", "blur", "brightness", "occlusion", "mixed"],
+                        default="mixed")
+    parser.add_argument("--degradation-severity", type=float, default=0.5)
     parser.add_argument("--grad-clip", type=float, default=5.0)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
@@ -108,6 +120,7 @@ def train(args=None):
     ce_crit      = LabelSmoothingCrossEntropy(smoothing=0.1)
     tri_crit     = TripletLoss(margin=0.3)
     quality_crit = QualityRegularizationLoss(diversity_weight=args.quality_weight)
+    rank_crit    = QualityRankingLoss(margin=0.05)
 
     # ── 优化器（分层学习率，与 Step3 一致）────────────────────
     params = [
@@ -143,7 +156,7 @@ def train(args=None):
     for epoch in range(args.epochs):
         model.train()
         current_lr = scheduler.step()
-        total_loss = total_ce = total_tri = total_qual = 0.0
+        total_loss = total_ce = total_tri = total_qual = total_rank = 0.0
 
         pbar = tqdm(train_loader, desc=f"Epoch [{epoch+1}/{args.epochs}]", ncols=120)
         for videos, labels in pbar:
@@ -157,7 +170,23 @@ def train(args=None):
             ce_loss   = ce_crit(logits, labels)
             tri_loss  = tri_crit(embeddings, labels)
             qual_loss = quality_crit(quality_scores)
-            loss = ce_loss + args.triplet_weight * tri_loss + qual_loss
+            rank_loss = torch.tensor(0.0, device=device)
+            if args.quality_rank_weight > 0:
+                degraded = degrade_videos(
+                    videos,
+                    mode=args.degradation_mode,
+                    severity=args.degradation_severity,
+                )
+                _, _, degraded_quality, _ = model(
+                    degraded, return_embedding=True, return_quality=True)
+                rank_loss = rank_crit(quality_scores, degraded_quality)
+
+            loss = (
+                ce_loss
+                + args.triplet_weight * tri_loss
+                + qual_loss
+                + args.quality_rank_weight * rank_loss
+            )
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
@@ -167,23 +196,27 @@ def train(args=None):
             total_ce   += ce_loss.item()
             total_tri  += tri_loss.item() if isinstance(tri_loss, torch.Tensor) else tri_loss
             total_qual += qual_loss.item()
+            total_rank += rank_loss.item()
 
             pbar.set_postfix({
                 'loss': f'{loss.item():.4f}',
                 'ce': f'{ce_loss.item():.4f}',
                 'tri': f'{tri_loss.item() if isinstance(tri_loss, torch.Tensor) else tri_loss:.4f}',
                 'qual': f'{qual_loss.item():.4f}',
+                'rank': f'{rank_loss.item():.4f}',
                 'lr': f'{current_lr:.2e}'
             })
 
         n = len(train_loader)
         avg = total_loss / n
-        print(f"\nEpoch [{epoch+1}/{EPOCHS}] "
+        print(f"\nEpoch [{epoch+1}/{args.epochs}] "
               f"loss={avg:.4f} ce={total_ce/n:.4f} "
-              f"tri={total_tri/n:.4f} qual={total_qual/n:.4f} lr={current_lr:.2e}")
+              f"tri={total_tri/n:.4f} qual={total_qual/n:.4f} "
+              f"rank={total_rank/n:.4f} lr={current_lr:.2e}")
 
         history.append({'epoch': epoch+1, 'loss': avg,
-                        'ce': total_ce/n, 'tri': total_tri/n, 'qual': total_qual/n})
+                        'ce': total_ce/n, 'tri': total_tri/n,
+                        'qual': total_qual/n, 'rank': total_rank/n})
 
         if avg < best_loss:
             best_loss = avg
