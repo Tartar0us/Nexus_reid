@@ -39,6 +39,46 @@ Core idea:
 
 ## Version Log
 
+### 2026-07-30 - `feat/docs: add paper experiment reporting workflow`
+
+Purpose:
+
+- Move the project closer to paper readiness by adding experiment reporting
+  utilities and a reproducible experiment guide.
+
+Changes:
+
+- Added `quality_aware_reid/model_complexity.py`.
+- The complexity script reports:
+  - total parameters
+  - trainable parameters
+  - latency per batch
+  - throughput in videos/second
+  - JSON output for paper tables
+- Added `EXPERIMENTS.md` as the paper experiment execution guide.
+- The experiment guide defines the run order for:
+  - mean pooling baseline
+  - semantic attention baseline
+  - quality-aware default model
+  - quality-aware + degradation ranking supervision
+  - official MARS evaluation
+  - degraded robustness evaluation
+  - quality fusion ablations
+  - complexity/speed reports
+  - quality/attention explainability export
+  - CSV/Markdown result summarization
+- Updated README to point to `EXPERIMENTS.md`.
+
+Validation:
+
+- All Python files under `quality_aware_reid/` compiled successfully.
+- `python quality_aware_reid/model_complexity.py --help` showed the expected arguments.
+
+Status:
+
+- Local commit pending.
+- GitHub push pending.
+
 ### 2026-07-30 - `feat: add quality fusion ablations`
 
 Purpose:
