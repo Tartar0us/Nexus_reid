@@ -158,3 +158,4 @@ powershell -ExecutionPolicy Bypass -File quality_aware_reid\run_ablation_eval.ps
 
 详细路线见根目录 `PROJECT_SEPARATION_AND_REID_ROADMAP.md`。
 论文推进清单见 `TODO_PAPER.md`。
+版本更新和当前项目进度见 `VERSION_HISTORY.md`。
